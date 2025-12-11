@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
 
   // Redirect if already authenticated
   if (authLoading) {
@@ -33,9 +34,9 @@ export default function LoginPage() {
     setError("");
 
     try {
-      await signIn("password", { email, password, flow: "signIn" });
+      await signIn("password", { email, password, flow: isSignUp ? "signUp" : "signIn" });
     } catch (err) {
-      setError("Invalid email or password");
+      setError(isSignUp ? "Could not create account" : "Invalid email or password");
     } finally {
       setIsLoading(false);
     }
@@ -96,13 +97,27 @@ export default function LoginPage() {
             {isLoading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Signing in...
+                {isSignUp ? "Creating account..." : "Signing in..."}
               </>
             ) : (
-              "Sign In"
+              isSignUp ? "Sign Up" : "Sign In"
             )}
           </button>
         </form>
+
+        {/* Toggle between Sign In and Sign Up */}
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setError("");
+            }}
+            className="text-sm text-dark-400 hover:text-dark-200 transition-colors"
+          >
+            {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
+          </button>
+        </div>
       </div>
     </div>
   );
