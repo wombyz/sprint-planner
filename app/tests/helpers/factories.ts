@@ -34,22 +34,31 @@ export async function createTestUser(
 
 /**
  * Create a test project
+ * Note: Projects don't have userId - they are shared/global
  */
 export async function createTestProject(
   t: ConvexTestInstance,
-  userId: Id<"users">,
   overrides: {
     name?: string;
     description?: string;
-    status?: "draft" | "active" | "completed" | "archived";
+    githubOwner?: string;
+    githubRepo?: string;
+    githubBranch?: string;
+    githubAccessToken?: string;
+    lastSyncedCommit?: string;
+    architectureLegend?: string;
   } = {}
 ): Promise<Id<"projects">> {
   return await t.run(async (ctx) => {
     return await ctx.db.insert("projects", {
-      userId,
       name: overrides.name ?? "Test Project",
       description: overrides.description,
-      status: overrides.status ?? "draft",
+      githubOwner: overrides.githubOwner ?? "test-owner",
+      githubRepo: overrides.githubRepo ?? "test-repo",
+      githubBranch: overrides.githubBranch ?? "main",
+      githubAccessToken: overrides.githubAccessToken,
+      lastSyncedCommit: overrides.lastSyncedCommit,
+      architectureLegend: overrides.architectureLegend,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -61,18 +70,19 @@ export async function createTestProject(
  */
 export async function createTestProjects(
   t: ConvexTestInstance,
-  userId: Id<"users">,
   count: number,
   overrides: {
     namePrefix?: string;
-    status?: "draft" | "active" | "completed" | "archived";
+    githubOwner?: string;
+    githubRepo?: string;
   } = {}
 ): Promise<Id<"projects">[]> {
   const ids: Id<"projects">[] = [];
   for (let i = 0; i < count; i++) {
-    const id = await createTestProject(t, userId, {
+    const id = await createTestProject(t, {
       name: `${overrides.namePrefix ?? "Project"} ${i + 1}`,
-      status: overrides.status,
+      githubOwner: overrides.githubOwner,
+      githubRepo: overrides.githubRepo ?? `test-repo-${i + 1}`,
     });
     ids.push(id);
   }
