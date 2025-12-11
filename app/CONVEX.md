@@ -194,7 +194,7 @@ myTable: defineTable({
 | `list` | Query | - | `Project[]` | List all projects |
 | `get` | Query | `{ id }` | `Project \| null` | Get project by ID |
 | `create` | Mutation | `{ name, description?, githubOwner, githubRepo, githubBranch?, githubAccessToken? }` | `Id<"projects">` | Create new project linked to GitHub repo |
-| `update` | Mutation | `{ id, name?, description?, githubBranch?, githubAccessToken? }` | `void` | Update project |
+| `update` | Mutation | `{ id, name?, description?, githubBranch?, githubAccessToken?, lastSyncedCommit?, architectureLegend? }` | `void` | Update project |
 | `remove` | Mutation | `{ id }` | `void` | Delete project and associated reviews |
 
 ### Reviews (`convex/reviews.ts`)

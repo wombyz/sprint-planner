@@ -2,6 +2,7 @@
  * Projects Convex Function Tests
  *
  * Tests for convex/projects.ts
+ * Note: Projects don't have userId - they are shared/global
  */
 
 import { convexTest } from "convex-test";
@@ -18,7 +19,7 @@ describe("projects", () => {
   });
 
   describe("list", () => {
-    it("should return empty array when user has no projects", async () => {
+    it("should return empty array when no projects exist", async () => {
       const userId = await createTestUser(t);
       const asUser = t.withIdentity({ subject: userId });
 
@@ -27,41 +28,42 @@ describe("projects", () => {
       expect(projects).toEqual([]);
     });
 
-    it("should return only user's own projects", async () => {
-      const user1 = await createTestUser(t, { email: "user1@test.com" });
-      const user2 = await createTestUser(t, { email: "user2@test.com" });
-
-      await createTestProject(t, user1, { name: "User 1 Project" });
-      await createTestProject(t, user2, { name: "User 2 Project" });
-
-      const asUser1 = t.withIdentity({ subject: user1 });
-      const projects = await asUser1.query(api.projects.list, {});
-
-      expect(projects).toHaveLength(1);
-      expect(projects[0].name).toBe("User 1 Project");
-    });
-
-    it("should filter by status when provided", async () => {
+    it("should return all projects sorted by updatedAt descending", async () => {
       const userId = await createTestUser(t);
 
-      await createTestProject(t, userId, { name: "Draft", status: "draft" });
-      await createTestProject(t, userId, { name: "Active", status: "active" });
+      // Create projects with different timestamps
+      await createTestProject(t, { name: "Project A" });
+      await new Promise((r) => setTimeout(r, 10));
+      await createTestProject(t, { name: "Project B" });
+      await new Promise((r) => setTimeout(r, 10));
+      await createTestProject(t, { name: "Project C" });
 
       const asUser = t.withIdentity({ subject: userId });
-      const activeProjects = await asUser.query(api.projects.list, {
-        status: "active",
-      });
+      const projects = await asUser.query(api.projects.list, {});
 
-      expect(activeProjects).toHaveLength(1);
-      expect(activeProjects[0].name).toBe("Active");
+      expect(projects).toHaveLength(3);
+      // Most recently updated should be first
+      expect(projects[0].name).toBe("Project C");
+      expect(projects[1].name).toBe("Project B");
+      expect(projects[2].name).toBe("Project A");
+    });
+
+    it("should return empty array when not authenticated", async () => {
+      await createTestProject(t, { name: "Test Project" });
+
+      const projects = await t.query(api.projects.list, {});
+
+      expect(projects).toEqual([]);
     });
   });
 
   describe("get", () => {
     it("should return project by ID", async () => {
       const userId = await createTestUser(t);
-      const projectId = await createTestProject(t, userId, {
+      const projectId = await createTestProject(t, {
         name: "My Project",
+        githubOwner: "test-owner",
+        githubRepo: "test-repo",
       });
 
       const asUser = t.withIdentity({ subject: userId });
@@ -69,6 +71,8 @@ describe("projects", () => {
 
       expect(project).not.toBeNull();
       expect(project?.name).toBe("My Project");
+      expect(project?.githubOwner).toBe("test-owner");
+      expect(project?.githubRepo).toBe("test-repo");
     });
 
     it("should return null for non-existent project", async () => {
@@ -81,16 +85,26 @@ describe("projects", () => {
 
       expect(project).toBeNull();
     });
+
+    it("should return null when not authenticated", async () => {
+      const projectId = await createTestProject(t, { name: "Test Project" });
+
+      const project = await t.query(api.projects.get, { id: projectId });
+
+      expect(project).toBeNull();
+    });
   });
 
   describe("create", () => {
-    it("should create project for authenticated user", async () => {
+    it("should create project with required GitHub fields", async () => {
       const userId = await createTestUser(t);
       const asUser = t.withIdentity({ subject: userId });
 
       const projectId = await asUser.mutation(api.projects.create, {
         name: "New Project",
         description: "A test project",
+        githubOwner: "my-org",
+        githubRepo: "my-repo",
       });
 
       expect(projectId).toBeDefined();
@@ -99,13 +113,47 @@ describe("projects", () => {
       const project = await t.run(async (ctx) => ctx.db.get(projectId));
       expect(project?.name).toBe("New Project");
       expect(project?.description).toBe("A test project");
-      expect(project?.userId).toBe(userId);
-      expect(project?.status).toBe("draft");
+      expect(project?.githubOwner).toBe("my-org");
+      expect(project?.githubRepo).toBe("my-repo");
+      expect(project?.githubBranch).toBe("main"); // Default value
+    });
+
+    it("should set default githubBranch to 'main' if not provided", async () => {
+      const userId = await createTestUser(t);
+      const asUser = t.withIdentity({ subject: userId });
+
+      const projectId = await asUser.mutation(api.projects.create, {
+        name: "Project Without Branch",
+        githubOwner: "owner",
+        githubRepo: "repo",
+      });
+
+      const project = await t.run(async (ctx) => ctx.db.get(projectId));
+      expect(project?.githubBranch).toBe("main");
+    });
+
+    it("should use provided githubBranch", async () => {
+      const userId = await createTestUser(t);
+      const asUser = t.withIdentity({ subject: userId });
+
+      const projectId = await asUser.mutation(api.projects.create, {
+        name: "Project With Branch",
+        githubOwner: "owner",
+        githubRepo: "repo",
+        githubBranch: "develop",
+      });
+
+      const project = await t.run(async (ctx) => ctx.db.get(projectId));
+      expect(project?.githubBranch).toBe("develop");
     });
 
     it("should throw when not authenticated", async () => {
       await expect(
-        t.mutation(api.projects.create, { name: "Test" })
+        t.mutation(api.projects.create, {
+          name: "Test",
+          githubOwner: "owner",
+          githubRepo: "repo",
+        })
       ).rejects.toThrow("Unauthorized");
     });
 
@@ -116,6 +164,8 @@ describe("projects", () => {
       const before = Date.now();
       const projectId = await asUser.mutation(api.projects.create, {
         name: "Timestamped Project",
+        githubOwner: "owner",
+        githubRepo: "repo",
       });
       const after = Date.now();
 
@@ -129,7 +179,7 @@ describe("projects", () => {
   describe("update", () => {
     it("should update project fields", async () => {
       const userId = await createTestUser(t);
-      const projectId = await createTestProject(t, userId, {
+      const projectId = await createTestProject(t, {
         name: "Original Name",
       });
 
@@ -137,17 +187,17 @@ describe("projects", () => {
       await asUser.mutation(api.projects.update, {
         id: projectId,
         name: "Updated Name",
-        status: "active",
+        githubBranch: "develop",
       });
 
       const project = await t.run(async (ctx) => ctx.db.get(projectId));
       expect(project?.name).toBe("Updated Name");
-      expect(project?.status).toBe("active");
+      expect(project?.githubBranch).toBe("develop");
     });
 
     it("should update updatedAt timestamp", async () => {
       const userId = await createTestUser(t);
-      const projectId = await createTestProject(t, userId);
+      const projectId = await createTestProject(t);
 
       const projectBefore = await t.run(async (ctx) => ctx.db.get(projectId));
       const originalUpdatedAt = projectBefore?.updatedAt;
@@ -165,26 +215,66 @@ describe("projects", () => {
       expect(projectAfter?.updatedAt).toBeGreaterThan(originalUpdatedAt!);
     });
 
-    it("should not allow updating other user's project", async () => {
-      const user1 = await createTestUser(t, { email: "user1@test.com" });
-      const user2 = await createTestUser(t, { email: "user2@test.com" });
-      const projectId = await createTestProject(t, user1);
-
-      const asUser2 = t.withIdentity({ subject: user2 });
+    it("should throw when not authenticated", async () => {
+      const projectId = await createTestProject(t);
 
       await expect(
-        asUser2.mutation(api.projects.update, {
+        t.mutation(api.projects.update, {
           id: projectId,
-          name: "Hacked",
+          name: "Updated",
         })
-      ).rejects.toThrow("Not authorized");
+      ).rejects.toThrow("Unauthorized");
+    });
+
+    it("should throw when project does not exist", async () => {
+      const userId = await createTestUser(t);
+      const asUser = t.withIdentity({ subject: userId });
+
+      const fakeId = "k5d7c8e9f0a1b2c3" as any;
+
+      await expect(
+        asUser.mutation(api.projects.update, {
+          id: fakeId,
+          name: "Updated",
+        })
+      ).rejects.toThrow("Project not found");
+    });
+
+    it("should update architectureLegend field", async () => {
+      const userId = await createTestUser(t);
+      const projectId = await createTestProject(t);
+
+      const asUser = t.withIdentity({ subject: userId });
+      await asUser.mutation(api.projects.update, {
+        id: projectId,
+        architectureLegend: "# Architecture Legend\n\nProject structure...",
+      });
+
+      const project = await t.run(async (ctx) => ctx.db.get(projectId));
+      expect(project?.architectureLegend).toBe(
+        "# Architecture Legend\n\nProject structure..."
+      );
+    });
+
+    it("should update lastSyncedCommit field", async () => {
+      const userId = await createTestUser(t);
+      const projectId = await createTestProject(t);
+
+      const asUser = t.withIdentity({ subject: userId });
+      await asUser.mutation(api.projects.update, {
+        id: projectId,
+        lastSyncedCommit: "abc123def456",
+      });
+
+      const project = await t.run(async (ctx) => ctx.db.get(projectId));
+      expect(project?.lastSyncedCommit).toBe("abc123def456");
     });
   });
 
   describe("remove", () => {
     it("should delete project", async () => {
       const userId = await createTestUser(t);
-      const projectId = await createTestProject(t, userId);
+      const projectId = await createTestProject(t);
 
       const asUser = t.withIdentity({ subject: userId });
       await asUser.mutation(api.projects.remove, { id: projectId });
@@ -193,16 +283,23 @@ describe("projects", () => {
       expect(project).toBeNull();
     });
 
-    it("should not allow deleting other user's project", async () => {
-      const user1 = await createTestUser(t, { email: "user1@test.com" });
-      const user2 = await createTestUser(t, { email: "user2@test.com" });
-      const projectId = await createTestProject(t, user1);
-
-      const asUser2 = t.withIdentity({ subject: user2 });
+    it("should throw when not authenticated", async () => {
+      const projectId = await createTestProject(t);
 
       await expect(
-        asUser2.mutation(api.projects.remove, { id: projectId })
-      ).rejects.toThrow("Not authorized");
+        t.mutation(api.projects.remove, { id: projectId })
+      ).rejects.toThrow("Unauthorized");
+    });
+
+    it("should throw when project does not exist", async () => {
+      const userId = await createTestUser(t);
+      const asUser = t.withIdentity({ subject: userId });
+
+      const fakeId = "k5d7c8e9f0a1b2c3" as any;
+
+      await expect(
+        asUser.mutation(api.projects.remove, { id: fakeId })
+      ).rejects.toThrow("Project not found");
     });
   });
 });
