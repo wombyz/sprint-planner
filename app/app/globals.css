@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+@theme {
+  /* Dark mode color palette */
+  --color-dark-50: #f7f7f8;
+  --color-dark-100: #ececf1;
+  --color-dark-200: #d9d9e3;
+  --color-dark-300: #c5c5d2;
+  --color-dark-400: #acacbe;
+  --color-dark-500: #8e8ea0;
+  --color-dark-600: #565869;
+  --color-dark-700: #40414f;
+  --color-dark-800: #343541;
+  --color-dark-900: #202123;
+  --color-dark-950: #0d0d0f;
+
+  /* Font family */
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), monospace;
+}
+
+@layer base {
+  html {
+    background-color: var(--color-dark-900);
+    color: var(--color-dark-100);
+  }
+
+  body {
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  .glass {
+    background-color: rgb(52 53 65 / 0.5);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgb(64 65 79 / 0.5);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+
+  .glass-hover {
+    background-color: rgb(52 53 65 / 0.5);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgb(64 65 79 / 0.5);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    transition: background-color 0.2s, border-color 0.2s;
+  }
+
+  .glass-hover:hover {
+    background-color: rgb(64 65 79 / 0.5);
+    border-color: rgb(86 88 105 / 0.5);
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-dark-600) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--color-dark-600);
+    border-radius: 3px;
+  }
+}
