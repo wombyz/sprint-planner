@@ -106,21 +106,54 @@ Extended authentication table with profile fields.
 - `by_email` - Query users by email
 
 #### `projects`
-Example domain table - rename for your use case.
+GitHub repositories linked for code analysis and review.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `userId` | `Id<"users">` | Yes | Owner reference |
-| `name` | `string` | Yes | Project name |
+| `name` | `string` | Yes | Project name (e.g., "ThumbForge") |
 | `description` | `string` | No | Project description |
-| `status` | `"draft" \| "active" \| "completed" \| "archived"` | Yes | Current status |
+| `githubOwner` | `string` | Yes | GitHub owner (e.g., "liamottley") |
+| `githubRepo` | `string` | Yes | GitHub repo name (e.g., "thumbforge") |
+| `githubBranch` | `string` | Yes | Branch to sync (default: "main") |
+| `githubAccessToken` | `string` | No | Encrypted PAT for private repos |
+| `lastSyncedCommit` | `string` | No | Last synced commit SHA |
+| `architectureLegend` | `string` | No | Cached Architecture Legend Markdown |
 | `createdAt` | `number` | Yes | Creation timestamp |
 | `updatedAt` | `number` | Yes | Last update timestamp |
 
 **Indexes:**
-- `by_user` - Query projects by owner
-- `by_status` - Query projects by status
-- `by_user_status` - Query user's projects by status
+- `by_name` - Query projects by name
+- `by_owner_repo` - Query projects by GitHub owner and repo
+
+#### `reviews`
+Video critique sessions tied to a project snapshot.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `projectId` | `Id<"projects">` | Yes | Parent project reference |
+| `title` | `string` | Yes | Review session title |
+| `status` | `union` | Yes | Workflow status (see below) |
+| `codeSnapshotCommit` | `string` | No | Git commit hash at time of review |
+| `architectureLegendSnapshot` | `string` | No | Copy of legend at review time |
+| `videoStorageId` | `Id<"_storage">` | No | Convex storage ID for video |
+| `videoGeminiUri` | `string` | No | Gemini File API URI |
+| `customInstructions` | `string` | No | User's focus instructions |
+| `repairManifest` | `string` | No | Generated Repair Manifest Markdown |
+| `createdAt` | `number` | Yes | Creation timestamp |
+| `updatedAt` | `number` | Yes | Last update timestamp |
+
+**Status Values:**
+- `draft` - Review created, not started
+- `syncing_code` - Fetching GitHub repo
+- `code_analyzed` - Architecture Legend generated
+- `uploading_video` - Video being uploaded
+- `analyzing_video` - Video processing in Gemini
+- `manifest_generated` - Repair Manifest ready
+- `completed` - Review finalized
+
+**Indexes:**
+- `by_project_status` - Query reviews by project and status
+- `by_project_updated` - Query reviews by project, ordered by update time
 
 ### Adding New Tables
 
@@ -158,11 +191,29 @@ myTable: defineTable({
 
 | Function | Type | Args | Returns | Description |
 |----------|------|------|---------|-------------|
-| `list` | Query | `{ status? }` | `Project[]` | List user's projects |
+| `list` | Query | - | `Project[]` | List all projects |
 | `get` | Query | `{ id }` | `Project \| null` | Get project by ID |
-| `create` | Mutation | `{ name, description? }` | `Id<"projects">` | Create new project |
-| `update` | Mutation | `{ id, name?, description?, status? }` | `void` | Update project |
-| `remove` | Mutation | `{ id }` | `void` | Delete project |
+| `create` | Mutation | `{ name, description?, githubOwner, githubRepo, githubBranch?, githubAccessToken? }` | `Id<"projects">` | Create new project linked to GitHub repo |
+| `update` | Mutation | `{ id, name?, description?, githubBranch?, githubAccessToken? }` | `void` | Update project |
+| `remove` | Mutation | `{ id }` | `void` | Delete project and associated reviews |
+
+### Reviews (`convex/reviews.ts`)
+
+| Function | Type | Args | Returns | Description |
+|----------|------|------|---------|-------------|
+| `list` | Query | `{ projectId }` | `Review[]` | List reviews for a project |
+| `get` | Query | `{ id }` | `Review \| null` | Get review by ID |
+| `create` | Mutation | `{ projectId, title }` | `Id<"reviews">` | Create new review session |
+| `update` | Mutation | `{ id, title?, customInstructions?, status? }` | `void` | Update review |
+| `setVideoStorageId` | Mutation | `{ id, videoStorageId }` | `void` | Associate uploaded video with review |
+
+### Actions (`convex/actions/`)
+
+| Function | Type | Args | Returns | Description |
+|----------|------|------|---------|-------------|
+| `githubSync.syncRepoAndAnalyze` | Action | `{ projectId }` | `{ commit, legendLength }` | Sync GitHub repo and generate Architecture Legend |
+| `videoProcess.processVideo` | Action | `{ reviewId, videoStorageId }` | `{ uri, state }` | Upload video to Gemini File API |
+| `generateManifest.generateManifest` | Action | `{ reviewId }` | `{ manifestLength }` | Generate Repair Manifest from video + Legend |
 
 ### Storage (`convex/storage.ts`)
 
