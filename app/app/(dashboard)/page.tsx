@@ -4,20 +4,17 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { FolderKanban, Plus } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ProjectGrid } from "@/components/features/projects/ProjectGrid";
 
 export default function DashboardPage() {
-  const projects = useQuery(api.projects.list);
+  const projects = useQuery(api.projects.listWithReviewCount);
 
   // Loading state
   if (projects === undefined) {
     return (
       <div className="space-y-4">
         <h1 className="text-2xl font-bold">Projects</h1>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 glass rounded-xl animate-pulse" />
-          ))}
-        </div>
+        <ProjectGrid projects={undefined} />
       </div>
     );
   }
@@ -61,33 +58,7 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {projects.map((project) => (
-          <div
-            key={project._id}
-            className="glass-hover rounded-xl p-4 cursor-pointer"
-          >
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-blue-600/20">
-                <FolderKanban className="h-5 w-5 text-blue-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-dark-100 truncate">
-                  {project.name}
-                </h3>
-                <p className="text-sm text-dark-400 truncate">
-                  {project.githubOwner}/{project.githubRepo}
-                </p>
-                {project.description && (
-                  <p className="text-sm text-dark-500 mt-2 line-clamp-2">
-                    {project.description}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <ProjectGrid projects={projects} />
     </div>
   );
 }
