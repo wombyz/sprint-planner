@@ -2,6 +2,51 @@
 
 > **FOR AI AGENTS**: This file defines all testing conventions. Follow these patterns exactly.
 
+## Prerequisites
+
+Before running tests, ensure the following setup is complete:
+
+### 1. Convex Backend Running
+
+```bash
+cd app
+npx convex dev
+```
+
+### 2. Convex Auth Configured
+
+The `AUTH_SECRET` environment variable must be set in Convex:
+
+```bash
+npx convex env set AUTH_SECRET "$(openssl rand -base64 32)"
+```
+
+### 3. Test User Seeded
+
+E2E tests require the standard test user to exist:
+
+```bash
+npx convex run seed:seed '{}'
+```
+
+This creates the test account:
+- **Email:** `test@mail.com`
+- **Password:** `password123`
+
+### 4. Next.js Server Running (for E2E tests)
+
+```bash
+pnpm dev
+```
+
+Or use the combined start script from project root:
+
+```bash
+./scripts/start.sh
+```
+
+---
+
 ## Directory Structure
 
 ```

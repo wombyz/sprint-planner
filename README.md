@@ -166,11 +166,35 @@ pnpm install
 # Initialize Convex (creates project in Convex dashboard)
 npx convex init
 
-# Deploy schema
+# Start Convex dev server (syncs schema and functions)
 npx convex dev
 ```
 
-### 4. Start Development
+### 4. Configure Convex Auth
+
+Convex Auth requires server-side environment variables. Set them via the Convex CLI:
+
+```bash
+# Generate and set AUTH_SECRET (required for password authentication)
+npx convex env set AUTH_SECRET "$(openssl rand -base64 32)"
+
+# Set GEMINI_API_KEY for code analysis (if using Sprint Planner features)
+npx convex env set GEMINI_API_KEY "your-gemini-api-key"
+```
+
+**Note:** `CONVEX_SITE_URL` is automatically set by Convex.
+
+### 5. Seed Test Data (Optional)
+
+For E2E testing, create the test user:
+
+```bash
+npx convex run seed:seed '{}'
+```
+
+This creates a test account: `test@mail.com` / `password123`
+
+### 6. Start Development
 
 ```bash
 # From project root
@@ -187,12 +211,20 @@ Visit http://localhost:3000
 
 ## Environment Variables
 
+### Local Environment (.env)
+
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `CONVEX_DEPLOYMENT` | Yes | Convex project deployment name |
-| `GOOGLE_GEMINI_API_KEY` | Yes | Gemini 3 API key for code analysis and video synthesis |
 | `ANTHROPIC_API_KEY` | Yes | Claude API key for ADW |
 | `GITHUB_PAT` | No | GitHub token for private repo access (defaults to `gh auth`) |
+
+### Convex Server Environment (set via `npx convex env set`)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `AUTH_SECRET` | Yes | Random secret for signing auth tokens (generate with `openssl rand -base64 32`) |
+| `GEMINI_API_KEY` | Yes* | Gemini API key for code analysis (*required for Sprint Planner features) |
 
 ### Gemini API Key Usage
 
