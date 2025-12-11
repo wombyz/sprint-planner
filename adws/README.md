@@ -32,7 +32,31 @@ curl -LsSf https://astral.sh/uv/install.sh | sh  # macOS/Linux
 gh auth login
 ```
 
-### 3. Run ADW
+### 3. Setup Convex (Required for Test Phase)
+
+The test phase requires Convex to be properly configured:
+
+```bash
+cd app
+
+# Install dependencies
+pnpm install
+
+# Authenticate with Convex (opens browser)
+npx convex dev
+
+# Set AUTH_SECRET for authentication (in a separate terminal)
+npx convex env set AUTH_SECRET "$(openssl rand -base64 32)"
+
+# Seed test user (required for E2E tests)
+npx convex run seed:seed '{}'
+```
+
+**Important:** `npx convex dev` must be running during test execution. The test user credentials are:
+- Email: `test@mail.com`
+- Password: `password123`
+
+### 4. Run ADW
 
 ```bash
 cd adws/

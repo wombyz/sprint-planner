@@ -229,6 +229,29 @@ myTable: defineTable({
 
 Using `@convex-dev/auth` with password authentication.
 
+### Setup Requirements
+
+**CRITICAL**: Before authentication will work, you must set the `AUTH_SECRET` environment variable:
+
+```bash
+# Generate and set AUTH_SECRET (required)
+npx convex env set AUTH_SECRET "$(openssl rand -base64 32)"
+```
+
+This is a **Convex server-side** environment variable (not in `.env.local`).
+
+**Note:** `CONVEX_SITE_URL` is automatically set by Convex and does not need manual configuration.
+
+### Seeding Test Users
+
+For E2E testing, create the standard test user:
+
+```bash
+npx convex run seed:seed '{}'
+```
+
+This creates: `test@mail.com` / `password123`
+
 ### Configuration
 
 ```typescript
@@ -236,7 +259,7 @@ Using `@convex-dev/auth` with password authentication.
 import { convexAuth } from "@convex-dev/auth/server";
 import { Password } from "@convex-dev/auth/providers/Password";
 
-export const { auth, signIn, signOut, store } = convexAuth({
+export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [Password],
 });
 ```
