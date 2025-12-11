@@ -1,62 +1,79 @@
-# Agentic Convex Template
+# Sprint Planner
 
-An AI-optimized project template for building real-time applications with **Convex** backend and **Next.js** frontend. Includes a complete **AI Developer Workflow (ADW)** system that automates development from GitHub issues to pull requests.
+A specialized tool for transforming video critiques into actionable development tasks. Sprint Planner bridges the "Agentic Gap" - the 10% of development work that AI agents miss - by converting screen recordings into structured Repair Manifests that Claude Code can execute autonomously.
 
-## What is This?
+## The Problem: The Agentic Gap
 
-This template gives you:
+AI Developer Workflows (ADWs) powered by Claude Code can build 90% of applications autonomously. However, the remaining 10% - subtle UI misalignments, unhandled edge cases, and visual inconsistencies - only reveal themselves during hands-on testing. Manually translating video critiques into file-specific engineering tasks consumes hours per sprint.
 
-1. **Convex Backend** - Real-time database, serverless functions, file storage
-2. **Next.js Frontend** - React app with App Router, Tailwind, shadcn/ui
-3. **ADW System** - AI agents that implement features from GitHub issues
-4. **Clear Conventions** - Optimized structure for AI coding agents
+## The Solution: Sprint Planner
+
+Sprint Planner operationalizes the "Human-in-the-Loop" philosophy:
+- **Humans** provide high-bandwidth input (video + voice critiques)
+- **AI** handles low-bandwidth synthesis (code correlation + task decomposition)
+
+The result is a **Repair Manifest** - a copy-pasteable Markdown document that Claude Code can ingest to generate dozens of autonomous GitHub issues.
 
 ```
-GitHub Issue → AI Planning → AI Implementation → Tests → Pull Request
+5-minute video critique → Sprint Planner → 2-hour sprint plan → Claude Code → Fixed code
 ```
 
 ---
 
-## What is Convex?
+## How It Works
 
-[Convex](https://convex.dev) is a backend-as-a-service that provides:
+Sprint Planner follows a 3-step wizard workflow:
 
-| Feature | Description |
-|---------|-------------|
-| **Real-time Database** | Data changes automatically sync to all connected clients |
-| **Serverless Functions** | Queries, mutations, and actions with full TypeScript support |
-| **File Storage** | Built-in blob storage for images, documents |
-| **Authentication** | First-party auth with @convex-dev/auth |
+### Step 1: Sync & Legend Generation (5-10s)
+- Connect your GitHub repository
+- Auto-fetch the latest commit and build codebase XML
+- Generate an **Architecture Legend** via Gemini 3 Flash (comprehensive code analysis report)
 
-### Why Convex for Agentic Development?
+### Step 2: Video Critique (1-2 min)
+- Upload a screen recording (up to 200MB MP4/WebM)
+- Add custom instructions (e.g., "Focus on auth flow bugs")
+- Video is processed via Gemini File API for multimodal analysis
 
-1. **Type Safety** - Schema defines types, functions auto-complete correctly
-2. **No Migrations** - Schema changes deploy automatically
-3. **Single Source of Truth** - Schema.ts defines the entire data model
-4. **Real-time by Default** - No WebSocket management needed
+### Step 3: Manifest Synthesis (30-60s)
+- Gemini 3 Pro analyzes video + Architecture Legend
+- Generates a structured **Repair Manifest** with:
+  - File-specific directives
+  - Timestamp-to-code correlations
+  - Step-by-step agent instructions
+- Copy to Claude Code and execute `/expand_spec_to_plan`
 
-### Key Concepts
+---
+
+## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                          Frontend                                │
-│         useQuery() → auto-subscribes to data changes            │
-│         useMutation() → optimistic updates                      │
+│                          FRONTEND                                │
+│             Next.js 15 + React + Tailwind + shadcn/ui           │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │  Dashboard │ Project List │ Review Wizard │ Manifest    │    │
+│  └─────────────────────────────────────────────────────────┘    │
 ├─────────────────────────────────────────────────────────────────┤
-│                           Convex                                 │
+│                          CONVEX                                  │
 │  ┌──────────────┬──────────────┬──────────────┐                 │
 │  │   Queries    │  Mutations   │   Actions    │                 │
 │  │  (read-only) │   (writes)   │  (Node.js)   │                 │
-│  │  cached,     │  transact-   │  external    │                 │
-│  │  reactive    │  ional       │  API calls   │                 │
 │  └──────────────┴──────────────┴──────────────┘                 │
 │                          │                                       │
-│                          ▼                                       │
 │  ┌─────────────────────────────────────────────┐                │
-│  │           Database (schema.ts)               │                │
-│  │      Automatic indexes, ACID transactions    │                │
+│  │     Database (projects, reviews)            │                │
+│  │     Storage (videos, XML snapshots)         │                │
 │  └─────────────────────────────────────────────┘                │
 └─────────────────────────────────────────────────────────────────┘
+                           │
+         ┌─────────────────┴─────────────────┐
+         ▼                                   ▼
+┌─────────────────────┐           ┌─────────────────────────────┐
+│   GitHub (Octokit)  │           │      Google Gemini 3        │
+│   - Repo tree fetch │           │   - Flash (Code Analysis)   │
+│   - Commit history  │           │   - Pro (Video Synthesis)   │
+│   - File contents   │           │   - File API (Uploads)      │
+└─────────────────────┘           └─────────────────────────────┘
 ```
 
 ---
@@ -70,52 +87,41 @@ GitHub Issue → AI Planning → AI Implementation → Tests → Pull Request
 ├── .gitignore                   # Git ignore rules
 │
 ├── app/                         # Next.js + Convex application
-│   ├── CONVEX.md                # ⭐ Backend documentation (READ THIS)
+│   ├── CONVEX.md                # Backend documentation (READ THIS)
 │   ├── convex/                  # Convex backend
-│   │   ├── schema.ts            # ⭐ Database schema (source of truth)
-│   │   ├── _README.md           # Convex patterns guide
-│   │   ├── auth.ts              # Authentication config
-│   │   └── [domain].ts          # Domain functions
+│   │   ├── schema.ts            # Database schema (projects, reviews)
+│   │   ├── projects.ts          # Project CRUD operations
+│   │   ├── reviews.ts           # Review session operations
+│   │   └── actions/             # Node.js actions
+│   │       ├── githubSync.ts    # GitHub repo sync + Legend generation
+│   │       ├── videoProcess.ts  # Video upload to Gemini
+│   │       └── generateManifest.ts  # Manifest synthesis
 │   ├── components/              # React components
 │   │   ├── ui/                  # shadcn/ui primitives
-│   │   ├── shared/              # Shared components
 │   │   └── features/            # Feature components
+│   │       ├── ProjectCard.tsx
+│   │       ├── ReviewStepper.tsx
+│   │       ├── ManifestViewer.tsx
+│   │       └── VideoPlayer.tsx
 │   ├── hooks/                   # Custom React hooks
-│   ├── lib/                     # Utilities
-│   ├── types/                   # TypeScript types
+│   │   └── useVideoUpload.ts    # Video upload with progress
 │   └── tests/                   # Test files
-│       ├── README.md            # ⭐ Testing conventions
-│       ├── helpers/             # Test utilities
+│       ├── README.md            # Testing conventions
 │       ├── unit/convex/         # Convex function tests
 │       └── e2e/                 # E2E browser tests
 │
 ├── adws/                        # AI Developer Workflow system
 │   ├── README.md                # ADW documentation
 │   ├── adw_plan_build.py        # Main orchestrator
-│   ├── adw_plan_build_test.py   # Full pipeline with tests
-│   └── ...
+│   └── adw_plan_build_test.py   # Full pipeline with tests
 │
 ├── .claude/                     # Claude Code configuration
 │   ├── commands/                # Slash commands
-│   │   ├── prime.md             # Context initialization
-│   │   ├── test.md              # Run tests
-│   │   ├── start.md             # Start servers
-│   │   └── ...
 │   └── hooks/                   # Lifecycle hooks
 │
 ├── specs/                       # Feature specifications
-├── scripts/                     # Utility scripts
-└── .github/ISSUE_TEMPLATE/      # GitHub issue templates
+└── scripts/                     # Utility scripts
 ```
-
-### Key Files for AI Agents
-
-| File | Purpose | When to Read |
-|------|---------|--------------|
-| `app/CONVEX.md` | Backend documentation, schema reference | Before ANY backend changes |
-| `app/convex/schema.ts` | Database schema definition | When adding/modifying tables |
-| `app/tests/README.md` | Testing conventions | When writing tests |
-| `.claude/commands/prime.md` | Context initialization | At start of session |
 
 ---
 
@@ -124,12 +130,8 @@ GitHub Issue → AI Planning → AI Implementation → Tests → Pull Request
 ### 1. Clone and Setup
 
 ```bash
-# Clone the template
-cp -r agentic-template my-new-project
-cd my-new-project
-
-# Initialize git
-git init
+git clone <repo-url> sprint-planner
+cd sprint-planner
 
 # Copy environment file
 cp .env.sample .env
@@ -140,14 +142,17 @@ cp .env.sample .env
 Edit `.env` with your credentials:
 
 ```bash
-# Required
-ANTHROPIC_API_KEY=sk-ant-...        # For Claude Code CLI
-
-# Convex (after running npx convex init)
+# Required - Convex
 CONVEX_DEPLOYMENT=your-deployment-name
 
-# Optional
-GITHUB_PAT=ghp_...                   # If using different GitHub account
+# Required - Gemini (Core functionality)
+GOOGLE_GEMINI_API_KEY=your-gemini-key
+
+# Required - ADW/Claude Code
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Optional - GitHub (for private repos)
+GITHUB_PAT=ghp_...
 ```
 
 ### 3. Initialize Convex
@@ -178,140 +183,52 @@ npx convex dev
 
 Visit http://localhost:3000
 
-### 5. Setup ADW (Optional)
+---
 
-```bash
-# Push to GitHub
-git remote add origin <your-repo-url>
-git push -u origin main
+## Environment Variables
 
-# Create a GitHub issue and watch ADW implement it!
-cd adws && uv run adw_plan_build.py 1
-```
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `CONVEX_DEPLOYMENT` | Yes | Convex project deployment name |
+| `GOOGLE_GEMINI_API_KEY` | Yes | Gemini 3 API key for code analysis and video synthesis |
+| `ANTHROPIC_API_KEY` | Yes | Claude API key for ADW |
+| `GITHUB_PAT` | No | GitHub token for private repo access (defaults to `gh auth`) |
+
+### Gemini API Key Usage
+
+The `GOOGLE_GEMINI_API_KEY` is used for:
+- **Gemini 3 Flash** (`gemini-3.0-flash-001`): Fast code analysis and Architecture Legend generation
+- **Gemini 3 Pro** (`gemini-3.0-pro-001`): Deep video reasoning and Repair Manifest synthesis
+- **Gemini File API**: Large video uploads (up to 200MB, resumable)
 
 ---
 
-## Convex Best Practices
+## Key Concepts
 
-### 1. Schema Design
+### Architecture Legend
+A comprehensive Markdown report generated by analyzing your codebase. Includes:
+- Executive summary and tech stack
+- Data architecture and schema
+- File manifest with annotations
+- Core workflows and API integrations
+- UI/UX specifications
 
-```typescript
-// convex/schema.ts
-export default defineSchema({
-  users: defineTable({
-    email: v.string(),
-    name: v.optional(v.string()),
-    role: v.union(v.literal("admin"), v.literal("member")),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_email", ["email"]),  // ← Always add indexes for query fields
+### Repair Manifest
+The final output - a structured document containing:
+- Issue breakdown with severity levels
+- Timestamp-to-code correlations from video
+- File-specific agent directives
+- Step-by-step implementation instructions
 
-  projects: defineTable({
-    userId: v.id("users"),          // ← Reference other tables with v.id()
-    name: v.string(),
-    status: v.union(
-      v.literal("draft"),
-      v.literal("active")
-    ),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_status", ["userId", "status"]),  // ← Compound index
-});
-```
-
-### 2. Always Use Indexes
-
-```typescript
-// ✅ GOOD - Uses index, O(log n)
-const projects = await ctx.db
-  .query("projects")
-  .withIndex("by_user", (q) => q.eq("userId", userId))
-  .collect();
-
-// ❌ BAD - Full table scan, O(n)
-const projects = await ctx.db
-  .query("projects")
-  .filter((q) => q.eq(q.field("userId"), userId))
-  .collect();
-```
-
-### 3. Authentication Pattern
-
-```typescript
-// convex/projects.ts
-import { getAuthUserId } from "@convex-dev/auth/server";
-
-export const create = mutation({
-  args: { name: v.string() },
-  handler: async (ctx, args) => {
-    // Always check auth first
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
-
-    return await ctx.db.insert("projects", {
-      userId,
-      name: args.name,
-      status: "draft",
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  },
-});
-```
-
-### 4. Parallel Fetches
-
-```typescript
-// ✅ GOOD - Parallel execution
-const [user, projects, settings] = await Promise.all([
-  ctx.db.get(userId),
-  ctx.db.query("projects").withIndex("by_user", q => q.eq("userId", userId)).collect(),
-  ctx.db.query("settings").withIndex("by_user", q => q.eq("userId", userId)).first(),
-]);
-
-// ❌ BAD - Sequential, slower
-const user = await ctx.db.get(userId);
-const projects = await ctx.db.query("projects")...
-```
-
-### 5. Timestamps
-
-```typescript
-// Always set both on create
-await ctx.db.insert("projects", {
-  ...data,
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
-});
-
-// Always update updatedAt on patch
-await ctx.db.patch(id, {
-  ...updates,
-  updatedAt: Date.now(),
-});
-```
+### Review Session
+A single critique workflow that:
+1. Snapshots the codebase at a specific commit
+2. Associates a video critique
+3. Generates a targeted Repair Manifest
 
 ---
 
 ## Testing
-
-### Test Structure
-
-```
-tests/
-├── helpers/              # Shared utilities
-│   ├── factories.ts      # createTestUser(), createTestProject()
-│   ├── auth.ts           # login(), TEST_USER
-│   └── mocks.ts          # mockTime(), createAnthropicMock()
-├── unit/convex/          # Convex function tests
-│   └── projects.test.ts  # Tests for convex/projects.ts
-└── e2e/                  # Browser tests
-    ├── run_test.js       # E2E runner
-    └── auth.test.js      # Authentication flows
-```
 
 ### Running Tests
 
@@ -339,21 +256,7 @@ node tests/e2e/run_test.js
 
 ## ADW System
 
-### How It Works
-
-```
-1. Create GitHub Issue
-   ↓
-2. ADW classifies issue (bug/feature/chore)
-   ↓
-3. Planning agent analyzes codebase
-   ↓
-4. Implementation agent writes code
-   ↓
-5. Tests run automatically
-   ↓
-6. Pull request created
-```
+Sprint Planner is built using the ADW (AI Developer Workflow) system. To contribute:
 
 ### Commands
 
@@ -361,13 +264,10 @@ node tests/e2e/run_test.js
 cd adws
 
 # Process single issue
-uv run adw_plan_build.py 1
+uv run adw_plan_build.py <issue-number>
 
 # Full pipeline with tests
-uv run adw_plan_build_test.py 1
-
-# Continuous monitoring
-uv run adw_triggers/trigger_cron.py
+uv run adw_plan_build_test.py <issue-number>
 ```
 
 ### Claude Code Commands
@@ -382,100 +282,36 @@ uv run adw_triggers/trigger_cron.py
 
 ---
 
-## Common Tasks
-
-### Adding a New Table
-
-1. Edit `app/convex/schema.ts`:
-```typescript
-myTable: defineTable({
-  userId: v.id("users"),
-  name: v.string(),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-})
-  .index("by_user", ["userId"]),
-```
-
-2. Create `app/convex/myTable.ts` with queries/mutations
-
-3. **Update `app/CONVEX.md`** with the new table documentation
-
-4. Add tests in `app/tests/unit/convex/myTable.test.ts`
-
-### Adding a New Feature
-
-1. Create GitHub issue with requirements
-2. Run `uv run adw_plan_build.py <issue-number>`
-3. Review generated plan in `specs/`
-4. Review and merge PR
-
-### Debugging
-
-```bash
-# Convex logs
-cd app && npx convex logs
-
-# Convex dashboard
-cd app && npx convex dashboard
-
-# Type check
-cd app && npx convex typecheck
-```
-
----
-
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ANTHROPIC_API_KEY` | Yes | Claude API key for ADW |
-| `CONVEX_DEPLOYMENT` | Yes | Convex project deployment name |
-| `GITHUB_PAT` | No | GitHub token (defaults to `gh auth`) |
-| `OPENAI_API_KEY` | No | For Whisper transcription |
-| `GOOGLE_GEMINI_API_KEY` | No | For Gemini features |
-
----
-
 ## Troubleshooting
 
 ### "Convex not connected"
-
 - Ensure `npx convex dev` is running
 - Check `CONVEX_DEPLOYMENT` in `.env`
-- Look for errors in Convex terminal
+
+### "Gemini API error"
+- Verify `GOOGLE_GEMINI_API_KEY` is set
+- Check API quotas in Google AI Studio
+- For large videos, ensure File API is enabled
+
+### "Video upload failed"
+- Maximum file size: 200MB
+- Supported formats: MP4, WebM
+- Check network connection for resumable uploads
 
 ### Type Errors
-
 ```bash
-# Regenerate types
-cd app && npx convex dev
-
-# Check types
 cd app && npx convex typecheck
 ```
-
-### Tests Failing
-
-- Ensure test database is clean
-- Check test credentials match seed data
-- Run single test: `pnpm test -t "test name"`
-
-### ADW Not Working
-
-- Check `ANTHROPIC_API_KEY` is set
-- Verify `gh auth login` is authenticated
-- Check issue has correct format
 
 ---
 
 ## Resources
 
 - [Convex Documentation](https://docs.convex.dev)
-- [Convex Discord](https://convex.dev/community)
+- [Google Gemini API](https://ai.google.dev)
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Claude Code Documentation](https://docs.anthropic.com/claude-code)
 
 ---
 
-*Built for Agentic Engineering - where AI agents handle implementation while humans provide direction.*
+*Sprint Planner - Closing the Agentic Gap, one video critique at a time.*
