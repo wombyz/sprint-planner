@@ -10,12 +10,23 @@ import { expect, describe, it, beforeEach } from "vitest";
 import { api } from "../../../convex/_generated/api";
 import schema from "../../../convex/schema";
 import { createTestUser, createTestProject } from "../../helpers/factories";
+import * as projects from "../../../convex/projects";
+import * as reviews from "../../../convex/reviews";
+import * as _generatedApi from "../../../convex/_generated/api";
+import * as _generatedServer from "../../../convex/_generated/server";
+
+const modules = {
+  "../../../convex/projects.ts": () => Promise.resolve(projects),
+  "../../../convex/reviews.ts": () => Promise.resolve(reviews),
+  "../../../convex/_generated/api.ts": () => Promise.resolve(_generatedApi),
+  "../../../convex/_generated/server.ts": () => Promise.resolve(_generatedServer),
+};
 
 describe("projects", () => {
   let t: ReturnType<typeof convexTest>;
 
   beforeEach(() => {
-    t = convexTest(schema);
+    t = convexTest(schema, modules);
   });
 
   describe("list", () => {
@@ -79,9 +90,11 @@ describe("projects", () => {
       const userId = await createTestUser(t);
       const asUser = t.withIdentity({ subject: userId });
 
-      // Create a valid-looking but non-existent ID
-      const fakeId = "k5d7c8e9f0a1b2c3" as any;
-      const project = await asUser.query(api.projects.get, { id: fakeId });
+      // Create a real project, then delete it
+      const projectId = await createTestProject(t);
+      await t.run(async (ctx) => ctx.db.delete(projectId));
+
+      const project = await asUser.query(api.projects.get, { id: projectId });
 
       expect(project).toBeNull();
     });
@@ -230,11 +243,13 @@ describe("projects", () => {
       const userId = await createTestUser(t);
       const asUser = t.withIdentity({ subject: userId });
 
-      const fakeId = "k5d7c8e9f0a1b2c3" as any;
+      // Create a real project, then delete it
+      const projectId = await createTestProject(t);
+      await t.run(async (ctx) => ctx.db.delete(projectId));
 
       await expect(
         asUser.mutation(api.projects.update, {
-          id: fakeId,
+          id: projectId,
           name: "Updated",
         })
       ).rejects.toThrow("Project not found");
@@ -295,10 +310,12 @@ describe("projects", () => {
       const userId = await createTestUser(t);
       const asUser = t.withIdentity({ subject: userId });
 
-      const fakeId = "k5d7c8e9f0a1b2c3" as any;
+      // Create a real project, then delete it
+      const projectId = await createTestProject(t);
+      await t.run(async (ctx) => ctx.db.delete(projectId));
 
       await expect(
-        asUser.mutation(api.projects.remove, { id: fakeId })
+        asUser.mutation(api.projects.remove, { id: projectId })
       ).rejects.toThrow("Project not found");
     });
   });

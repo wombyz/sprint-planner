@@ -1,6 +1,12 @@
 import { defineConfig } from "vitest/config";
+import path from "path";
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "."),
+    },
+  },
   test: {
     passWithNoTests: true,
     exclude: [
@@ -8,9 +14,13 @@ export default defineConfig({
       "**/dist/**",
       "**/e2e/**",
       "**/*.e2e.{test,spec}.{js,ts}",
-      // Exclude Convex function tests until functions are implemented
-      // and `npx convex dev` has generated the _generated folder
-      "**/tests/unit/convex/**",
     ],
+    deps: {
+      optimizer: {
+        web: {
+          include: ["convex-test"],
+        },
+      },
+    },
   },
 });

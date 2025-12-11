@@ -201,11 +201,12 @@ myTable: defineTable({
 
 | Function | Type | Args | Returns | Description |
 |----------|------|------|---------|-------------|
-| `list` | Query | `{ projectId }` | `Review[]` | List reviews for a project |
+| `listByProject` | Query | `{ projectId }` | `Review[]` | List reviews for a project, sorted by updatedAt descending |
 | `get` | Query | `{ id }` | `Review \| null` | Get review by ID |
-| `create` | Mutation | `{ projectId, title }` | `Id<"reviews">` | Create new review session |
-| `update` | Mutation | `{ id, title?, customInstructions?, status? }` | `void` | Update review |
-| `setVideoStorageId` | Mutation | `{ id, videoStorageId }` | `void` | Associate uploaded video with review |
+| `create` | Mutation | `{ projectId, title, customInstructions? }` | `Id<"reviews">` | Create new review in draft status |
+| `update` | Mutation | `{ id, title?, customInstructions? }` | `void` | Update review fields |
+| `updateStatus` | Mutation | `{ id, status }` | `void` | Transition review status with validation |
+| `remove` | Mutation | `{ id }` | `void` | Delete review |
 
 ### Actions (`convex/actions/`)
 

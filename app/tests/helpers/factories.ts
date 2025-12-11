@@ -90,12 +90,58 @@ export async function createTestProjects(
 }
 
 /**
+ * Create a test review
+ */
+export async function createTestReview(
+  t: ConvexTestInstance,
+  projectId: Id<"projects">,
+  overrides: {
+    title?: string;
+    status?:
+      | "draft"
+      | "syncing_code"
+      | "code_analyzed"
+      | "uploading_video"
+      | "analyzing_video"
+      | "manifest_generated"
+      | "completed";
+    customInstructions?: string;
+    codeSnapshotCommit?: string;
+    architectureLegendSnapshot?: string;
+    videoStorageId?: Id<"_storage">;
+    videoGeminiUri?: string;
+    repairManifest?: string;
+  } = {}
+): Promise<Id<"reviews">> {
+  return await t.run(async (ctx) => {
+    return await ctx.db.insert("reviews", {
+      projectId,
+      title: overrides.title ?? "Test Review",
+      status: overrides.status ?? "draft",
+      customInstructions: overrides.customInstructions,
+      codeSnapshotCommit: overrides.codeSnapshotCommit,
+      architectureLegendSnapshot: overrides.architectureLegendSnapshot,
+      videoStorageId: overrides.videoStorageId,
+      videoGeminiUri: overrides.videoGeminiUri,
+      repairManifest: overrides.repairManifest,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  });
+}
+
+/**
  * Clean up all test data
  * Use in afterEach if needed
  */
 export async function cleanupTestData(t: ConvexTestInstance): Promise<void> {
   await t.run(async (ctx) => {
     // Delete in reverse dependency order
+    const reviews = await ctx.db.query("reviews").collect();
+    for (const review of reviews) {
+      await ctx.db.delete(review._id);
+    }
+
     const projects = await ctx.db.query("projects").collect();
     for (const project of projects) {
       await ctx.db.delete(project._id);
