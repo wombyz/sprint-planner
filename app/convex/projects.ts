@@ -129,3 +129,34 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+/**
+ * List all projects with review counts, sorted by updatedAt descending
+ */
+export const listWithReviewCount = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+
+    const projects = await ctx.db.query("projects").collect();
+
+    // Get review counts for each project
+    const projectsWithReviewCount = await Promise.all(
+      projects.map(async (project) => {
+        const reviews = await ctx.db
+          .query("reviews")
+          .withIndex("by_project_updated", (q) => q.eq("projectId", project._id))
+          .collect();
+
+        return {
+          ...project,
+          reviewCount: reviews.length,
+        };
+      })
+    );
+
+    // Sort by updatedAt descending
+    return projectsWithReviewCount.sort((a, b) => b.updatedAt - a.updatedAt);
+  },
+});
