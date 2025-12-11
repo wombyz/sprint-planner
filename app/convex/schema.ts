@@ -59,31 +59,57 @@ export default defineSchema({
     .index("by_email", ["email"]),
 
   // ============================================
-  // EXAMPLE: PROJECTS TABLE
+  // PROJECTS TABLE
   // ============================================
-  // Rename/modify this table for your domain
+  // GitHub repositories linked for code analysis and review
   projects: defineTable({
-    userId: v.id("users"),
     name: v.string(),
     description: v.optional(v.string()),
 
-    status: v.union(
-      v.literal("draft"),
-      v.literal("active"),
-      v.literal("completed"),
-      v.literal("archived")
-    ),
+    // GitHub integration fields
+    githubOwner: v.string(),
+    githubRepo: v.string(),
+    githubBranch: v.string(),
+    githubAccessToken: v.optional(v.string()),
+    lastSyncedCommit: v.optional(v.string()),
+
+    // Cached Architecture Legend
+    architectureLegend: v.optional(v.string()),
 
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_user", ["userId"])
-    .index("by_status", ["status"])
-    .index("by_user_status", ["userId", "status"]),
+    .index("by_name", ["name"])
+    .index("by_owner_repo", ["githubOwner", "githubRepo"]),
 
   // ============================================
-  // ADD YOUR TABLES BELOW
+  // REVIEWS TABLE
   // ============================================
-  // Follow the pattern above for consistency
+  // Video critique sessions tied to a project snapshot
+  reviews: defineTable({
+    projectId: v.id("projects"),
+    title: v.string(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("syncing_code"),
+      v.literal("code_analyzed"),
+      v.literal("uploading_video"),
+      v.literal("analyzing_video"),
+      v.literal("manifest_generated"),
+      v.literal("completed")
+    ),
+    codeSnapshotCommit: v.optional(v.string()),
+    architectureLegendSnapshot: v.optional(v.string()),
+    videoStorageId: v.optional(v.id("_storage")),
+    videoGeminiUri: v.optional(v.string()),
+    customInstructions: v.optional(v.string()),
+    repairManifest: v.optional(v.string()),
+
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_project_status", ["projectId", "status"])
+    .index("by_project_updated", ["projectId", "updatedAt"]),
 });
