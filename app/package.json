@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -30,6 +30,7 @@
     "convex-test": "^0.0.41",
     "eslint": "^8.57.1",
     "eslint-config-next": "15.1.0",
+    "playwright": "^1.57.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }

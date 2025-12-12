@@ -97,9 +97,42 @@ await runTest('my_test', async ({ page }) => {
 
 See `.claude/commands/e2e/TEST_DATA_GUIDELINES.md` for comprehensive patterns.
 
+## Localhost Verification (CRITICAL)
+
+> **IMPORTANT**: When running multiple local apps, you MUST verify you're testing Sprint Planner, not another app.
+
+### Before Each Test Run:
+
+1. **Confirm the correct app is running on port 3000:**
+   ```bash
+   # Check what's on port 3000
+   lsof -i :3000
+
+   # Verify it's Sprint Planner by checking the login page
+   curl -s http://localhost:3000/login | head -20
+   ```
+
+2. **Expected login page characteristics:**
+   - `input[name="email"]` - Email input field
+   - `input[name="password"]` - Password input field
+   - `button[type="submit"]` - Submit button
+   - After login → redirects to `/dashboard`
+
+3. **If wrong app detected:**
+   - Kill the process: `kill -9 <PID from lsof>`
+   - Start Sprint Planner: `cd /path/to/sprint-planner && ./scripts/start.sh`
+   - Re-verify before testing
+
+### Common Port Conflict Symptoms:
+- "Element not found" errors for login inputs
+- Login works but wrong dashboard appears
+- Tests pass/fail inconsistently
+- "Convex connection timeout" when Convex IS running elsewhere
+
 ## Instructions
 
 - FIRST: Verify servers are running using the health check above
+- SECOND: Verify you're testing the correct app (see Localhost Verification above)
 - Read the `e2e_test_file`
 - Digest the `User Story` to first understand what we're validating
 - IMPORTANT: Execute the `Test Steps` detailed in the `e2e_test_file` using Playwright browser automation
@@ -113,7 +146,7 @@ See `.claude/commands/e2e/TEST_DATA_GUIDELINES.md` for comprehensive patterns.
 - IMPORTANT: After taking each screenshot, save it to `Screenshot Directory` with descriptive names. Use absolute paths to move the files to the `Screenshot Directory` with the correct name.
 - Capture and report any errors encountered
 - Ultra think about the `Test Steps` and execute them in order
-- If you encounter an error, mark the test as failed immediately and explain exactly what went wrong and on what step it occurred. For example: '(Step 1) Failed to find element with selector "query-input" on page "http://localhost:3000"'
+- If you encounter an error, mark the test as failed immediately and explain exactly what went wrong and on what step it occurred. For example: '(Step 1) Failed to find element with selector "query-input" on page "http://localhost:6000"'
 - Use `pwd` or equivalent to get the absolute path to the codebase for writing and displaying the correct paths to the screenshots
 
 

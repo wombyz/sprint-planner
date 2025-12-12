@@ -205,7 +205,7 @@ This creates a test account: `test@mail.com` / `password123`
 # Terminal 2: cd app && pnpm dev
 ```
 
-Visit http://localhost:3000
+Visit http://localhost:6000
 
 ---
 

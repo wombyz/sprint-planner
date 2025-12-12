@@ -19,7 +19,7 @@ As a Sprint Planner user, I want to see my projects displayed as cards in a resp
 ### Test Steps
 
 #### Step 1: Setup - Navigate and Login
-1. Navigate to `http://localhost:3000/login`
+1. Navigate to `http://localhost:6000/login`
 2. Wait for page to load (login form visible)
 3. Fill email input with `test@mail.com`
 4. Fill password input with `password123`

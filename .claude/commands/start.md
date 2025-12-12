@@ -20,7 +20,7 @@ For a Convex + Next.js application, you need TWO servers running:
 2. **Next.js Frontend** (`pnpm dev`)
    - Serves the React application
    - Hot module reloading
-   - Runs on http://localhost:3000
+   - Runs on http://localhost:6000
 
 ## Server Health Check
 
@@ -28,7 +28,7 @@ Before running E2E tests, verify servers are ready:
 
 ```bash
 # Check if page loads without "Loading..." (Convex connected)
-curl -s http://localhost:3000/login | grep -q "Loading" && echo "NOT READY" || echo "READY"
+curl -s http://localhost:6000/login | grep -q "Loading" && echo "NOT READY" || echo "READY"
 ```
 
 ## Manual Start (Development)
@@ -45,4 +45,5 @@ cd app && pnpm dev
 
 - Convex must start first and show "Convex functions ready!" before Next.js
 - The script should be non-blocking for ADW to continue working
-- Default frontend URL: http://localhost:3000
+- Default frontend URL: http://localhost:6000
+- Port 6000 is used to avoid conflicts with other local apps running on default ports
