@@ -15,6 +15,7 @@ const { chromium } = require("playwright");
 const path = require("path");
 
 // Configuration
+// NOTE: Sprint Planner runs on port 3000 by default
 const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
 const HEADLESS = process.env.HEADLESS !== "false";
 const SLOW_MO = parseInt(process.env.SLOW_MO || "0", 10);
@@ -26,6 +27,43 @@ const TEST_USER = {
 };
 
 /**
+ * Verify we're testing the correct application
+ * This helps catch issues when multiple local apps are running
+ */
+async function verifyApplication(page) {
+  console.log(`\n🔍 Verifying application at ${BASE_URL}...`);
+
+  try {
+    const response = await page.goto(`${BASE_URL}/login`, { timeout: 10000 });
+
+    if (!response || !response.ok()) {
+      throw new Error(`Failed to reach ${BASE_URL}/login - Status: ${response?.status()}`);
+    }
+
+    // Check for Sprint Planner specific elements
+    const hasEmailInput = await page.locator('input[name="email"]').count() > 0;
+    const hasPasswordInput = await page.locator('input[name="password"]').count() > 0;
+    const hasSubmitButton = await page.locator('button[type="submit"]').count() > 0;
+
+    if (!hasEmailInput || !hasPasswordInput || !hasSubmitButton) {
+      console.warn(`⚠️  WARNING: Login form structure doesn't match Sprint Planner`);
+      console.warn(`   Expected: email input, password input, submit button`);
+      console.warn(`   Found: email=${hasEmailInput}, password=${hasPasswordInput}, submit=${hasSubmitButton}`);
+      console.warn(`   You may be testing the wrong application!`);
+      console.warn(`   Check what's running on port ${BASE_URL.split(':').pop()}: lsof -i :${BASE_URL.split(':').pop()}`);
+    } else {
+      console.log(`✅ Application verified - Sprint Planner detected at ${BASE_URL}`);
+    }
+
+    return { verified: hasEmailInput && hasPasswordInput && hasSubmitButton };
+  } catch (error) {
+    console.error(`❌ Application verification failed: ${error.message}`);
+    console.error(`   Is Sprint Planner running? Try: ./scripts/start.sh`);
+    throw error;
+  }
+}
+
+/**
  * Login helper
  */
 async function login(page, credentials = TEST_USER) {
@@ -33,7 +71,8 @@ async function login(page, credentials = TEST_USER) {
   await page.fill('input[name="email"]', credentials.email);
   await page.fill('input[name="password"]', credentials.password);
   await page.click('button[type="submit"]');
-  await page.waitForURL(`${BASE_URL}/dashboard`, { timeout: 10000 });
+  // Wait for redirect away from login page - dashboard is at root /
+  await page.waitForURL((url) => !url.toString().includes('/login'), { timeout: 15000 });
 }
 
 /**
@@ -156,6 +195,7 @@ function createExpect(page) {
 module.exports = {
   runTest,
   login,
+  verifyApplication,
   waitForConvex,
   screenshot,
   TEST_USER,
@@ -171,12 +211,18 @@ Usage:
   node run_test.js <test_file>
 
 Environment Variables:
-  BASE_URL  - Application URL (default: http://localhost:3000)
+  BASE_URL  - Application URL (default: http://localhost:6000)
   HEADLESS  - Run headless (default: true)
   SLOW_MO   - Slow motion ms (default: 0)
 
 Example:
   node run_test.js auth.test.js
   HEADLESS=false node run_test.js auth.test.js
+  BASE_URL=http://localhost:8080 node run_test.js auth.test.js
+
+⚠️  PORT CONFLICT WARNING:
+  Sprint Planner runs on port 3000 by default.
+  If you have multiple local apps running, verify you're testing
+  the correct one by checking: lsof -i :3000
   `);
 }

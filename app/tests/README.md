@@ -2,6 +2,15 @@
 
 > **FOR AI AGENTS**: This file defines all testing conventions. Follow these patterns exactly.
 
+## Port Configuration
+
+**Sprint Planner runs on port 6000** (not the default 3000) to avoid conflicts with other local applications.
+
+| Service | URL |
+|---------|-----|
+| Next.js Frontend | http://localhost:6000 |
+| Convex Backend | Managed automatically |
+
 ## Prerequisites
 
 Before running tests, ensure the following setup is complete:
@@ -43,6 +52,99 @@ Or use the combined start script from project root:
 
 ```bash
 ./scripts/start.sh
+```
+
+---
+
+## Localhost Verification (CRITICAL for E2E Tests)
+
+> **FOR AI AGENTS**: When running E2E tests, you MUST verify you are testing the correct application. Running multiple local apps simultaneously can cause tests to run against the wrong application.
+
+### Why This Matters
+
+If you have multiple Next.js apps running locally (e.g., on ports 3000, 5000, 6000), your E2E tests might:
+- Login to the wrong application
+- See unexpected UI elements
+- Fail with confusing errors about missing elements
+- Pass incorrectly because another app happened to have similar structure
+
+### Verification Steps
+
+**Before running any E2E test, verify the target application:**
+
+#### 1. Check What's Running on Port 6000
+```bash
+# Check if Sprint Planner is running on the expected port
+curl -s http://localhost:6000 | head -20
+
+# Look for Sprint Planner specific indicators in the HTML:
+# - "sprint-planner" in title or meta tags
+# - Convex-related scripts
+# - Login page structure matching this app
+```
+
+#### 2. Verify Application Identity
+The Sprint Planner login page should have:
+- Input fields: `input[name="email"]` and `input[name="password"]`
+- A submit button: `button[type="submit"]`
+- URL path: `/login`
+- After login, redirect to `/dashboard`
+
+```bash
+# Quick identity check - should return HTML containing "sprint" or specific app markers
+curl -s http://localhost:6000/login | grep -i "sprint\|planner" || echo "WARNING: May not be Sprint Planner"
+```
+
+#### 3. If Wrong App Detected
+If you discover tests are hitting the wrong application:
+
+1. **Kill conflicting processes:**
+   ```bash
+   # Find what's using port 6000
+   lsof -i :6000
+
+   # Kill if needed
+   kill -9 <PID>
+   ```
+
+2. **Start Sprint Planner:**
+   ```bash
+   cd /path/to/sprint-planner
+   ./scripts/start.sh
+   ```
+
+3. **Re-verify before running tests**
+
+### Debugging Port Conflicts
+
+```bash
+# List all listening ports
+lsof -i -P | grep LISTEN | grep -E ":(3000|5000|6000|8000)"
+
+# Check specific port
+lsof -i :6000
+
+# See what app is serving on a port (check response headers/content)
+curl -I http://localhost:6000
+```
+
+### Common Symptoms of Wrong App
+
+| Symptom | Likely Cause |
+|---------|--------------|
+| "Element not found: input[name='email']" | Different login form structure |
+| Login succeeds but wrong dashboard | Testing different app |
+| Unexpected navigation paths | Wrong app routing |
+| Tests pass locally but fail in CI | Port conflicts on local machine |
+| "Convex connection timeout" | Sprint Planner not running, different app is |
+
+### Best Practice for Test Scripts
+
+Always log the target URL at the start of tests:
+```javascript
+console.log(`Testing against: ${BASE_URL}`);
+console.log(`Verifying application identity...`);
+// Add application-specific checks here
 ```
 
 ---

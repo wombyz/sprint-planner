@@ -8,7 +8,8 @@
 Brief description of what this test validates.
 
 ### Prerequisites
-- Server must be running
+- Server must be running on **port 6000** (Sprint Planner default)
+- **VERIFY** you're testing the correct app: `lsof -i :6000` and check login page structure
 - Test user must exist (credentials: test@mail.com / password123)
 - Any required seed data
 
@@ -58,7 +59,9 @@ Create a corresponding test file at `app/tests/e2e/{feature_name}.test.js`:
 ```javascript
 const { chromium } = require('playwright');
 
-const BASE_URL = 'http://localhost:3000';
+// NOTE: Sprint Planner runs on port 6000 to avoid conflicts with other local apps
+// ALWAYS verify you're testing the correct app: lsof -i :6000
+const BASE_URL = process.env.BASE_URL || 'http://localhost:6000';
 const TEST_USER = {
   email: 'test@mail.com',
   password: 'password123'

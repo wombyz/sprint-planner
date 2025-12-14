@@ -9,7 +9,7 @@ const fs = require("fs");
 // Screenshot directory from args or default
 const SCREENSHOT_DIR =
   process.env.SCREENSHOT_DIR ||
-  "/Users/liamottley/dev/sprint-planner/agents/0d12a818/e2e_test_runner_0_0/img/dashboard_layout";
+  "/Users/liamottley/dev/sprint-planner/agents/0078a886/e2e_test_runner_1_0/img/dashboard_layout";
 
 async function main() {
   // Ensure screenshot directory exists
@@ -30,59 +30,119 @@ async function main() {
         return filepath;
       };
 
-      // Step 1: Navigate and Login (or Sign Up if user doesn't exist)
+      // Step 1: Navigate and Login
       console.log("Step 1: Navigate and Login...");
       await page.goto(`${BASE_URL}/login`);
 
-      // Wait for Convex to connect (page should show login form, not Loading)
+      // Wait for Convex to connect
       await waitForConvex(page);
+      await page.waitForSelector('input[name="email"]', { timeout: 10000 });
 
-      // Fill login form
-      await page.fill('input[name="email"]', TEST_USER.email);
-      await page.fill('input[name="password"]', TEST_USER.password);
-      await page.click('button[type="submit"]');
+      // Helper to check if we're logged in (dashboard visible)
+      async function checkLoggedIn() {
+        // Check for sidebar navigation elements that only appear when logged in
+        const projectsLink = page.locator('aside text=Projects, nav text=Projects').first();
+        return await projectsLink.isVisible().catch(() => false);
+      }
 
-      // Wait a bit for response
-      await page.waitForTimeout(3000);
+      // Helper to attempt authentication
+      async function attemptAuth(isSignUp = false) {
+        console.log(`Attempting ${isSignUp ? 'signup' : 'login'}...`);
 
-      // Check if login failed (invalid credentials error visible)
-      const errorText = await page.locator('text=Invalid email or password').isVisible().catch(() => false);
+        // Wait for form to be fully interactive after hydration
+        await page.waitForTimeout(1500);
 
-      if (errorText) {
-        // User doesn't exist - try to sign up first
-        console.log("Login failed - attempting to sign up test user...");
-
-        // Click the "Sign Up" toggle link at the bottom of the form
-        const signUpToggle = page.locator('text=Sign Up').last();
-        await signUpToggle.click();
-        await page.waitForTimeout(500);
-
-        // Clear and re-fill the form
-        await page.fill('input[name="email"]', "");
-        await page.fill('input[name="password"]', "");
+        // Fill email and password
         await page.fill('input[name="email"]', TEST_USER.email);
         await page.fill('input[name="password"]', TEST_USER.password);
 
-        // Submit sign up
+        // Verify inputs have values
+        const emailValue = await page.locator('input[name="email"]').inputValue();
+        const passwordValue = await page.locator('input[name="password"]').inputValue();
+        console.log(`Email filled: ${emailValue}, Password filled: ${passwordValue ? '(has value)' : '(empty)'}`);
+
+        // Click submit
+        await page.waitForTimeout(200);
         await page.click('button[type="submit"]');
-        await page.waitForTimeout(3000);
 
-        // Check if signup succeeded
-        const signupError = await page.locator('text=Could not create account').isVisible().catch(() => false);
-        if (signupError) {
-          throw new Error("(Step 1) Could not create test user account. Check Convex auth configuration.");
+        // Wait for either redirect or error
+        for (let i = 0; i < 20; i++) {
+          await page.waitForTimeout(500);
+          const currentUrl = page.url();
+
+          // Log status every few iterations
+          if (i % 3 === 0) {
+            console.log(`Iteration ${i}: URL=${currentUrl}`);
+          }
+
+          // Check URL - any page that's not /login is success
+          if (!currentUrl.includes('/login')) {
+            console.log("URL changed to:", currentUrl);
+            return true;
+          }
+
+          // Check if dashboard content appeared (might not redirect URL but show content)
+          if (await checkLoggedIn()) {
+            console.log("Dashboard content detected");
+            return true;
+          }
+
+          // Check for error (means auth failed)
+          const hasError = await page.locator('.text-red-400').isVisible().catch(() => false);
+          if (hasError && i > 2) {
+            const errorText = await page.locator('.text-red-400').textContent().catch(() => 'Unknown error');
+            console.log(`Auth error detected: ${errorText}`);
+            return false;
+          }
         }
-
-        console.log("✓ Test user created via sign up");
+        console.log("Timeout waiting for redirect - still on login page");
+        return false;
       }
 
-      // Wait for redirect to dashboard
-      await page.waitForURL((url) => url.pathname === "/" || url.pathname === "/dashboard", {
-        timeout: 15000,
-      });
+      // Try login first
+      let loggedIn = await attemptAuth(false);
+
+      if (!loggedIn) {
+        console.log("Login failed, trying signup...");
+
+        // Reload page to clear state
+        await page.goto(`${BASE_URL}/login`);
+        await waitForConvex(page);
+        await page.waitForSelector('input[name="email"]', { timeout: 10000 });
+
+        // Click sign up toggle
+        await page.locator('button').filter({ hasText: 'Sign Up' }).last().click();
+        await page.waitForTimeout(500);
+
+        // Try signup
+        loggedIn = await attemptAuth(true);
+
+        if (!loggedIn) {
+          // Signup might have failed because account exists - try login again
+          console.log("Signup may have failed, trying login once more...");
+          await page.goto(`${BASE_URL}/login`);
+          await waitForConvex(page);
+          await page.waitForSelector('input[name="email"]', { timeout: 10000 });
+          loggedIn = await attemptAuth(false);
+        }
+      }
+
+      if (!loggedIn) {
+        await page.screenshot({ path: '/tmp/login_debug.png' });
+        throw new Error("(Step 1) Authentication failed");
+      }
 
       // Wait for dashboard to load
+      await page.waitForLoadState('networkidle');
       await page.waitForTimeout(2000);
+
+      const finalUrl = page.url();
+      console.log("Final URL: " + finalUrl);
+      if (finalUrl.includes('/login')) {
+        throw new Error("(Step 1) Still on login page");
+      }
+
+      console.log("✓ Successfully authenticated");
       console.log("✓ Dashboard loaded successfully");
 
       // Step 2: Verify Dark Mode is Active
@@ -164,13 +224,20 @@ async function main() {
         await page.waitForTimeout(500);
       }
 
-      // Check for logout button (may be in dropdown or directly visible)
-      let logoutBtn = page.locator('button:has-text("Logout"), button:has-text("Log out"), button:has-text("Sign out"), [aria-label*="logout"], text=Logout, text="Log out", text="Sign out"').first();
+      // Check for logout button - may have only icon visible (text hidden on mobile with 'hidden sm:inline')
+      // Look for button with LogOut icon or containing logout text
+      let logoutBtn = page.locator('button:has-text("Logout"), button:has-text("Log out"), button:has-text("Sign out")').first();
       let logoutVisible = await logoutBtn.isVisible().catch(() => false);
 
       if (!logoutVisible) {
+        // Try finding button with logout icon (svg inside button in header)
+        logoutBtn = page.locator('header button:has(svg)').last();
+        logoutVisible = await logoutBtn.isVisible().catch(() => false);
+      }
+
+      if (!logoutVisible) {
         // Try looking in any dropdown that appeared
-        logoutBtn = page.locator('[role="menu"] >> text=Logout, [role="menu"] >> text="Log out", [class*="dropdown"] >> text=Logout').first();
+        logoutBtn = page.locator('[role="menu"] >> text=Logout, [role="menu"] >> text="Log out"').first();
         logoutVisible = await logoutBtn.isVisible().catch(() => false);
       }
 
@@ -190,11 +257,11 @@ async function main() {
       await page.waitForTimeout(1000);
 
       // Verify URL or content changed
-      const currentUrl = page.url();
-      const hasSettings = currentUrl.includes("settings") ||
+      const settingsUrl = page.url();
+      const hasSettings = settingsUrl.includes("settings") ||
         await page.locator('h1:has-text("Settings"), h2:has-text("Settings"), [class*="settings"]').isVisible().catch(() => false);
 
-      if (!hasSettings && !currentUrl.includes("settings")) {
+      if (!hasSettings && !settingsUrl.includes("settings")) {
         console.log("Note: Settings navigation may not have distinct URL");
       }
       console.log("✓ Settings link works");

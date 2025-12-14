@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth } from "convex/react";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { FolderKanban, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
+  const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const { signIn } = useAuthActions();
   const [email, setEmail] = useState("");
@@ -16,6 +17,12 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
 
   // Redirect if already authenticated
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      router.push("/");
+    }
+  }, [isAuthenticated, authLoading, router]);
+
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -24,8 +31,13 @@ export default function LoginPage() {
     );
   }
 
+  // Show loading while redirecting
   if (isAuthenticated) {
-    redirect("/");
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-dark-400" />
+      </div>
+    );
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,10 +46,13 @@ export default function LoginPage() {
     setError("");
 
     try {
-      await signIn("password", { email, password, flow: isSignUp ? "signUp" : "signIn" });
-    } catch (err) {
+      const result = await signIn("password", { email, password, flow: isSignUp ? "signUp" : "signIn" });
+      // signIn completed - the useEffect will handle redirect when isAuthenticated updates
+      // Keep isLoading true until redirect happens
+      console.log("Sign in completed, waiting for auth state update...", result);
+    } catch (err: unknown) {
+      console.error("Sign in error:", err);
       setError(isSignUp ? "Could not create account" : "Invalid email or password");
-    } finally {
       setIsLoading(false);
     }
   };
